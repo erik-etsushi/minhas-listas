@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Minhas Listas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen overflow-x-hidden"
+      x-data="app()" x-init="init()">
+
+  <!-- Header -->
+  <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
+      <span class="text-xl" x-text="tabs[tipo].emoji"></span>
+      <h1 class="text-lg font-bold" x-text="tabs[tipo].label"></h1>
+      <span class="ml-auto text-sm text-gray-500"
+            x-text="itensAtivos.length + (itensAtivos.length === 1 ? ' item' : ' itens')"></span>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main class="max-w-2xl mx-auto px-4 py-4 pb-36">
+
+    <!-- Loading -->
+    <div x-show="carregando" class="flex justify-center py-20">
+      <div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!carregando && itensAtivos.length === 0"
+         class="text-center py-20 text-gray-500">
+      <p class="text-5xl mb-3" x-text="tabs[tipo].emoji"></p>
+      <p class="font-medium">Nenhum item ainda.</p>
+      <p class="text-sm mt-1">Toque em + para pesquisar e adicionar.</p>
+    </div>
+
+    <!-- Items list -->
+    <div class="grid gap-3" x-show="!carregando && itensAtivos.length > 0">
+      <template x-for="item in itensAtivos" :key="item.id">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 flex gap-3">
+
+          <!-- Cover -->
+          <div class="w-14 h-20 rounded-lg bg-gray-800 flex-shrink-0 overflow-hidden">
+            <img x-show="item.poster_url" :src="item.poster_url" :alt="item.titulo"
+                 class="w-full h-full object-cover" @error="item.poster_url = ''" />
+            <div x-show="!item.poster_url"
+                 class="w-full h-full flex items-center justify-center text-2xl"
+                 x-text="tabs[tipo].emoji"></div>
+          </div>
+
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-1">
+              <p class="font-semibold leading-tight line-clamp-2" x-text="item.titulo"></p>
+              <button @click="removerItem(item)"
+                      class="text-gray-600 hover:text-red-400 transition text-xl leading-none ml-1 flex-shrink-0">✕</button>
+            </div>
+            <div class="flex flex-wrap gap-x-2 mt-1 text-xs text-gray-400">
+              <span x-show="item.ano" x-text="item.ano"></span>
+              <span x-show="item.genero" x-text="item.genero"></span>
+              <span x-show="item.autor" class="text-gray-300" x-text="item.autor"></span>
+            </div>
+            <div x-show="item.nota" class="mt-1">
+              <span class="text-yellow-400 text-xs font-medium">★ <span x-text="item.nota"></span></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+
+  <!-- FAB -->
+  <button @click="abrirBusca()"
+          class="fixed bottom-24 right-4 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
+                 rounded-full shadow-lg flex items-center justify-center text-2xl font-light transition z-20
+                 safe-bottom">
+    +
+  </button>
+
+  <!-- Bottom nav -->
+  <nav class="fixed bottom-0 inset-x-0 bg-gray-900 border-t border-gray-800 z-20 safe-bottom">
+    <div class="max-w-2xl mx-auto flex">
+      <template x-for="(tab, key) in tabs" :key="key">
+        <button @click="trocarTipo(key)"
+                class="flex-1 py-3 flex flex-col items-center gap-0.5 transition"
+                :class="tipo === key ? 'text-indigo-400' : 'text-gray-500 hover:text-gray-300'">
+          <span class="text-xl" x-text="tab.emoji"></span>
+          <span class="text-xs font-medium" x-text="tab.label"></span>
+        </button>
+      </template>
+    </div>
+  </nav>
+
+  <!-- Search sheet overlay -->
+  <div x-show="buscaAberta"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 bg-black/60 z-30"
+       @click="fecharBusca()">
+  </div>
+
+  <!-- Search sheet -->
+  <div x-show="buscaAberta"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="translate-y-full"
+       x-transition:enter-end="translate-y-0"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="translate-y-0"
+       x-transition:leave-end="translate-y-full"
+       class="fixed inset-x-0 bottom-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl z-40
+              max-h-[85vh] flex flex-col safe-bottom">
+
+    <!-- Sheet header -->
+    <div class="px-4 pt-4 pb-3 border-b border-gray-800 flex-shrink-0">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">
+          Pesquisar <span x-text="tabs[tipo].label.toLowerCase()"></span>
+        </h2>
+        <button @click="fecharBusca()" class="text-gray-400 hover:text-white transition text-xl">✕</button>
+      </div>
+      <div class="relative">
+        <input
+          x-ref="searchInput"
+          x-model="termoBusca"
+          @input="pesquisar()"
+          @keydown.escape="fecharBusca()"
+          type="search"
+          :placeholder="'Buscar ' + tabs[tipo].label.toLowerCase() + '...'"
+          class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 pr-10
+                 focus:outline-none focus:border-indigo-500 text-sm"
+          autocomplete="off"
+        />
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+          <span x-show="!buscando">🔍</span>
+          <span x-show="buscando" class="inline-block w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Search results -->
+    <div class="overflow-y-auto flex-1 px-4 py-3">
+
+      <!-- Hint -->
+      <div x-show="!termoBusca.trim() && resultadosBusca.length === 0"
+           class="text-center py-10 text-gray-500 text-sm">
+        Digite para pesquisar
+      </div>
+
+      <!-- No results -->
+      <div x-show="termoBusca.trim() && !buscando && resultadosBusca.length === 0"
+           class="text-center py-10 text-gray-500 text-sm">
+        Nenhum resultado encontrado.
+      </div>
+
+      <!-- Results -->
+      <div class="grid gap-2">
+        <template x-for="(item, idx) in resultadosBusca" :key="idx">
+          <div class="flex gap-3 p-2 rounded-xl hover:bg-gray-800 transition">
+
+            <!-- Thumb -->
+            <div class="w-12 h-17 rounded-lg bg-gray-800 flex-shrink-0 overflow-hidden" style="height:68px">
+              <img x-show="item.poster_url" :src="item.poster_url" :alt="item.titulo"
+                   class="w-full h-full object-cover" @error="item.poster_url = ''" />
+              <div x-show="!item.poster_url"
+                   class="w-full h-full flex items-center justify-center text-xl"
+                   x-text="tabs[tipo].emoji"></div>
+            </div>
+
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-sm leading-tight line-clamp-2" x-text="item.titulo"></p>
+              <div class="flex flex-wrap gap-x-2 mt-0.5 text-xs text-gray-400">
+                <span x-show="item.ano" x-text="item.ano"></span>
+                <span x-show="item.genero" x-text="item.genero"></span>
+                <span x-show="item.autor" x-text="item.autor"></span>
+              </div>
+            </div>
+
+            <!-- Add button -->
+            <div class="flex-shrink-0 flex items-center">
+              <button x-show="!jaAdicionado(item)"
+                      @click="adicionarDaBusca(item)"
+                      class="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white
+                             px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                + Add
+              </button>
+              <span x-show="jaAdicionado(item)"
+                    class="text-green-400 text-xs font-medium px-2">✓</span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div x-show="toast.msg" x-transition
+       class="fixed top-4 left-4 right-4 max-w-md mx-auto px-4 py-3 rounded-xl text-sm z-50 text-center"
+       :class="toast.tipo === 'erro' ? 'bg-red-900 border border-red-700' : 'bg-green-900 border border-green-700'"
+       x-text="toast.msg">
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
