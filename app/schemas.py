@@ -17,6 +17,11 @@ class FilmeCreate(FilmeBase):
     pass
 
 
+class FilmeUpdate(BaseModel):
+    nota: Optional[float] = Field(None, ge=0, le=10)
+    comentario: Optional[str] = ""
+
+
 class FilmeOut(FilmeBase):
     id: int
     lista_id: int

@@ -16,6 +16,10 @@ function app() {
     buscando: false,
     _debounce: null,
 
+    notasAbertas: false,
+    itemNotas: null,
+    formNotas: { nota: null, comentario: '' },
+
     toast: { msg: '', tipo: 'ok' },
     _toastTimer: null,
 
@@ -125,6 +129,35 @@ function app() {
         this.listas[this.tipo].filmes = this.listas[this.tipo].filmes.filter(f => f.id !== item.id);
       } catch {
         this.mostrarToast('Erro ao remover.', 'erro');
+      }
+    },
+
+    abrirNotas(item) {
+      this.itemNotas = item;
+      this.formNotas = { nota: item.nota ?? null, comentario: item.comentario || '' };
+      this.notasAbertas = true;
+    },
+
+    fecharNotas() {
+      this.notasAbertas = false;
+      this.itemNotas = null;
+    },
+
+    async salvarNotas() {
+      const item = this.itemNotas;
+      try {
+        const r = await fetch(`/api/listas/${this.listaAtivaId}/filmes/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.formNotas),
+        });
+        if (!r.ok) throw new Error();
+        const atualizado = await r.json();
+        Object.assign(item, atualizado);
+        this.fecharNotas();
+        this.mostrarToast('Notas salvas!', 'ok');
+      } catch {
+        this.mostrarToast('Erro ao salvar notas.', 'erro');
       }
     },
 
