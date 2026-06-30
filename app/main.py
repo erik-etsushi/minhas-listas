@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from .database import engine, SessionLocal
 from . import models
-from .routers import listas, filmes, search
+from .routers import listas, filmes, search, citacoes, email as email_router
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -26,6 +26,8 @@ _seed_listas()
 app.include_router(listas.router)
 app.include_router(filmes.router)
 app.include_router(search.router)
+app.include_router(citacoes.router)
+app.include_router(email_router.router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 

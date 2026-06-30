@@ -1,13 +1,14 @@
 function app() {
   return {
     tabs: {
-      filmes:  { label: 'Filmes',  emoji: '🎬' },
-      series:  { label: 'Séries',  emoji: '📺' },
-      livros:  { label: 'Livros',  emoji: '📚' },
+      filmes:   { label: 'Filmes',   emoji: '🎬' },
+      series:   { label: 'Séries',   emoji: '📺' },
+      livros:   { label: 'Livros',   emoji: '📚' },
+      citacoes: { label: 'Citações', emoji: '💬' },
     },
     tipo: 'filmes',
     listaIds: { filmes: null, series: null, livros: null },
-    listas:   { filmes: null,  series: null,  livros: null },
+    listas:   { filmes: null, series: null, livros: null },
     carregando: false,
 
     buscaAberta: false,
@@ -20,19 +21,28 @@ function app() {
     itemNotas: null,
     formNotas: { nota: null, comentario: '' },
 
+    citacoes: null,
+    citacaoAberta: false,
+    itemCitacao: null,
+    formCitacao: { citacao: '', autor: '' },
+
     toast: { msg: '', tipo: 'ok' },
     _toastTimer: null,
 
     async init() {
       this.carregando = true;
       try {
-        const r = await fetch('/api/listas/');
-        const todas = await r.json();
+        const [rListas, rCitacoes] = await Promise.all([
+          fetch('/api/listas/'),
+          fetch('/api/citacoes/'),
+        ]);
+        const todas = await rListas.json();
         const mapa = { 'Filmes': 'filmes', 'Séries': 'series', 'Livros': 'livros' };
         for (const l of todas) {
           const t = mapa[l.nome];
           if (t) this.listaIds[t] = l.id;
         }
+        this.citacoes = await rCitacoes.json();
         await this._carregarLista(this.tipo);
       } catch {
         this.mostrarToast('Erro ao carregar dados.', 'erro');
@@ -49,6 +59,7 @@ function app() {
     },
 
     get itensAtivos() {
+      if (this.tipo === 'citacoes') return this.citacoes || [];
       return this.listas[this.tipo]?.filmes || [];
     },
 
@@ -60,7 +71,7 @@ function app() {
       if (this.tipo === novoTipo && !this.buscaAberta) return;
       this.fecharBusca();
       this.tipo = novoTipo;
-      if (!this.listas[novoTipo]) {
+      if (novoTipo !== 'citacoes' && !this.listas[novoTipo]) {
         this.carregando = true;
         try { await this._carregarLista(novoTipo); }
         finally { this.carregando = false; }
@@ -68,6 +79,10 @@ function app() {
     },
 
     abrirBusca() {
+      if (this.tipo === 'citacoes') {
+        this.abrirCitacao(null);
+        return;
+      }
       this.buscaAberta = true;
       this.termoBusca = '';
       this.resultadosBusca = [];
@@ -122,6 +137,10 @@ function app() {
     },
 
     async removerItem(item) {
+      if (this.tipo === 'citacoes') {
+        await this.removerCitacao(item);
+        return;
+      }
       if (!confirm(`Remover "${item.titulo}"?`)) return;
       try {
         const r = await fetch(`/api/listas/${this.listaAtivaId}/filmes/${item.id}`, { method: 'DELETE' });
@@ -133,6 +152,10 @@ function app() {
     },
 
     abrirNotas(item) {
+      if (this.tipo === 'citacoes') {
+        this.abrirCitacao(item);
+        return;
+      }
       this.itemNotas = item;
       this.formNotas = { nota: item.nota ?? null, comentario: item.comentario || '' };
       this.notasAbertas = true;
@@ -158,6 +181,51 @@ function app() {
         this.mostrarToast('Notas salvas!', 'ok');
       } catch {
         this.mostrarToast('Erro ao salvar notas.', 'erro');
+      }
+    },
+
+    abrirCitacao(item) {
+      this.itemCitacao = item;
+      this.formCitacao = item
+        ? { citacao: item.citacao, autor: item.autor || '' }
+        : { citacao: '', autor: '' };
+      this.citacaoAberta = true;
+    },
+
+    fecharCitacao() {
+      this.citacaoAberta = false;
+      this.itemCitacao = null;
+    },
+
+    async salvarCitacao() {
+      const isEdit = !!this.itemCitacao;
+      const url    = isEdit ? `/api/citacoes/${this.itemCitacao.id}` : '/api/citacoes/';
+      const method = isEdit ? 'PUT' : 'POST';
+      try {
+        const r = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.formCitacao),
+        });
+        if (!r.ok) throw new Error();
+        const salva = await r.json();
+        if (isEdit) Object.assign(this.itemCitacao, salva);
+        else        this.citacoes.push(salva);
+        this.fecharCitacao();
+        this.mostrarToast(isEdit ? 'Citação atualizada!' : 'Citação adicionada!');
+      } catch {
+        this.mostrarToast('Erro ao salvar.', 'erro');
+      }
+    },
+
+    async removerCitacao(item) {
+      if (!confirm('Remover citação?')) return;
+      try {
+        const r = await fetch(`/api/citacoes/${item.id}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error();
+        this.citacoes = this.citacoes.filter(c => c.id !== item.id);
+      } catch {
+        this.mostrarToast('Erro ao remover.', 'erro');
       }
     },
 

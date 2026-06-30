@@ -30,3 +30,12 @@ class Filme(Base):
     adicionado_em = Column(DateTime(timezone=True), server_default=func.now())
 
     lista = relationship("Lista", back_populates="filmes")
+
+
+class Citacao(Base):
+    __tablename__ = "citacoes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    citacao = Column(Text, nullable=False)
+    autor = Column(String(200), default="")
+    adicionado_em = Column(DateTime(timezone=True), server_default=func.now())

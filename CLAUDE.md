@@ -38,8 +38,9 @@ Browser → /api/* → FastAPI routers → SQLAlchemy → filmes.db
 
 - `Lista` (id, nome, descricao, criado_em) → tem muitos `Filme`
 - `Filme` (id, lista_id, titulo, ano, genero, **autor**, nota, comentario, poster_url, adicionado_em)
+- `Citacao` (id, citacao, autor, adicionado_em) — standalone, sem lista_id
 
-O campo `autor` é usado principalmente para livros. `nota` aceita 0–10.
+O campo `autor` em `Filme` é usado principalmente para livros. `nota` aceita 0–10. `Citacao` não usa o sistema de listas; tem sua própria tabela e router.
 
 ### Rotas da API
 
@@ -54,6 +55,18 @@ O campo `autor` é usado principalmente para livros. `nota` aceita 0–10.
 - `PUT /api/listas/{lista_id}/filmes/{filme_id}` — editar (aceita só `nota` e `comentario` via `FilmeUpdate`)
 - `DELETE /api/listas/{lista_id}/filmes/{filme_id}` — remover item
 
+**Citações** (`app/routers/citacoes.py`):
+- `GET /api/citacoes/` — listar todas
+- `POST /api/citacoes/` — criar (body: `citacao`, `autor`)
+- `PUT /api/citacoes/{id}` — editar
+- `DELETE /api/citacoes/{id}` — remover
+
+**Email diário** (`app/routers/email.py`):
+- `POST /api/send-daily-email` — envia email Gmail com 1 livro, 1 filme e 1 citação aleatórios
+  - Protegido por header `X-Secret-Token` (env var `EMAIL_SECRET_TOKEN`)
+  - Requer env vars: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `EMAIL_TO`
+  - `EMAIL_ENABLED=false` desativa sem remover o endpoint
+
 **Busca** (`app/routers/search.py`):
 - `GET /api/search/?q=<termo>&tipo=<filmes|series|livros>` — busca externa sem autenticação
   - `filmes`/`series` → IMDB suggestion API (`sg.media-imdb.com/suggestion`)
@@ -65,7 +78,7 @@ O campo `autor` é usado principalmente para livros. `nota` aceita 0–10.
 - `app.js` — função `app()` com todo o estado e lógica de fetch
 - `style.css` — overrides mínimos (line-clamp, tap highlight, font-size iOS)
 
-O estado global vive em `app()`: `listas` (array), `listaAtiva` (objeto com filmes), modais e formulários.
+O estado global vive em `app()`: `listas` (filmes/series/livros), `citacoes` (array separado para citações), modais e formulários. Citações têm seu próprio sheet de add/edit (`citacaoAberta`) e não usam o search sheet.
 
 ## Deploy (Docker + Litestream)
 

@@ -48,6 +48,26 @@ class ListaSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CitacaoBase(BaseModel):
+    citacao: str = Field(..., min_length=1)
+    autor: Optional[str] = ""
+
+
+class CitacaoCreate(CitacaoBase):
+    pass
+
+
+class CitacaoUpdate(CitacaoBase):
+    pass
+
+
+class CitacaoOut(CitacaoBase):
+    id: int
+    adicionado_em: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class SearchResult(BaseModel):
     titulo: str
     ano: Optional[int] = None
