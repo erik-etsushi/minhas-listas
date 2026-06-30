@@ -101,7 +101,8 @@ def _build_plain(livro, filme, citacao) -> str:
 
 def _send_email(livro, filme, citacao):
     gmail_user = os.environ["GMAIL_USER"]
-    gmail_pass = os.environ["GMAIL_APP_PASSWORD"]
+    # Strip all whitespace (including non-breaking spaces copied from Google UI)
+    gmail_pass = "".join(c for c in os.environ["GMAIL_APP_PASSWORD"] if not c.isspace())
     email_to = os.environ["EMAIL_TO"]
 
     msg = MIMEMultipart("alternative")
